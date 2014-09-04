@@ -68,7 +68,6 @@
     The activity indicator that gets shown during the loading state of the internal `UIWebView`.
 */
 
-@property (nonatomic, retain) UIActivityIndicatorView *activityIndicator;
 
 /**
     The main state machine handling the internal state of `HYWebViewController`.

@@ -144,26 +144,6 @@
     }
 }
 
-- (UIActivityIndicatorView *)activityIndicator {
-    if (!_activityIndicator) {
-        _activityIndicator = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleGray];
-        _activityIndicator.center = self.view.center;
-        _activityIndicator.translatesAutoresizingMaskIntoConstraints = NO;
-        [_activityIndicator startAnimating];
-        _activityIndicator.hidden = YES;
-
-        [self.view addSubview:_activityIndicator];
-
-        NSLayoutConstraint *centerXConstraint = [NSLayoutConstraint constraintWithItem:_activityIndicator attribute:NSLayoutAttributeCenterX relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeCenterX multiplier:1 constant:0];
-        NSLayoutConstraint *centerYConstraint = [NSLayoutConstraint constraintWithItem:_activityIndicator attribute:NSLayoutAttributeCenterY relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeCenterY multiplier:1 constant:0];
-
-        [self.view addConstraint:centerXConstraint];
-        [self.view addConstraint:centerYConstraint];
-    }
-
-    return _activityIndicator;
-}
-
 - (TKStateMachine *)stateMachine {
     if (!_stateMachine) {
 
@@ -176,13 +156,11 @@
             if (!self.hasLoadedURL) {
                 self.webView.hidden = YES;
                 self.webView.scrollView.scrollEnabled = NO;
-                self.activityIndicator.hidden = NO;
-            }
+             }
         }];
 
         [loading setDidExitStateBlock:^(TKState *state, TKStateMachine *stateMachine) {
             self.navigationItem.rightBarButtonItem = nil;
-            self.activityIndicator.hidden = YES;
         }];
 
 
