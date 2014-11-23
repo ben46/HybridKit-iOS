@@ -11,6 +11,7 @@
 #import "HYDefaultCommandHandlerPack.h"
 
 #import <SVProgressHUD/SVProgressHUD.h>
+#import <JavaScriptCore/JavaScriptCore.h>
 
 #define IS_IOS7 !([[[UIDevice currentDevice] systemVersion] floatValue] < 7.0f)
 #define HY_LOG(str, ...) if (self.loggingEnabled) NSLog(@"<%@ | %p> %@", NSStringFromClass(self.class), self, [NSString stringWithFormat:str, ##__VA_ARGS__])
@@ -49,6 +50,10 @@
 
     if (_params[@"url"]) self.url = [NSURL URLWithString:[_params[@"url"] hy_slashUnescaped]];
     if (_params[@"html"]) self.htmlString = [_params[@"html"] hy_slashUnescaped];
+    
+    
+    
+    
 }
 
 #pragma mark - Command handler interface
