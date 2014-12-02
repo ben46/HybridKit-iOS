@@ -8,17 +8,16 @@
 
 #import "HYDefaultCommandHandlerPack.h"
 #import "NSString+HybridKit.h"
-#import <BlocksKit/BlocksKit+UIKit.h>
 
 @implementation HYDefaultCommandHandlerPack
--(void)handleCommandString:(NSString *)commandString dictionary:(NSDictionary *)commandDictionary {
+- (void)handleCommandString:(NSString *)commandString dictionary:(NSDictionary *)commandDictionary {
     if ([commandString isEqualToString:@"alert"]) {
-        UIAlertView *alertView = [UIAlertView bk_alertViewWithTitle:commandDictionary[@"title"] message:commandDictionary[@"message"]];
-        [alertView bk_setCancelButtonWithTitle:commandDictionary[@"cancel_button_title"] ? commandDictionary[@"cancel_button_title"] : @"OK" handler:nil];
-        [alertView show];
+        UIAlertView *alert = [[UIAlertView alloc] initWithTitle:commandDictionary[@"title"] message:commandDictionary[@"message"] delegate:nil cancelButtonTitle:commandDictionary[@"cancel_button_title"] ? : @"OK" otherButtonTitles:nil];
+        [alert show];
     }
-
-    else if ([commandString isEqualToString:@"open_url"]) {
+    
+    else
+        if ([commandString isEqualToString:@"open_url"]) {
         [[UIApplication sharedApplication] openURL:[NSURL URLWithString:commandDictionary[@"url"]]];
     }
 

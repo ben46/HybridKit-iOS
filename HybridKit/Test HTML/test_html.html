@@ -40,7 +40,7 @@
     $("#buttonId").on('click', function (event) {
         event.stopPropagation();
         event.preventDefault();
-        HybridKit.runCommand("xm_play_music", {mID: "1234"});
+                      HybridKit.runCommand("xm_play_music", {mID: "1234", callback_javascript:123});
     });
 
     function callmeFromObjC(para1) {

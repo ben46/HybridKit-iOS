@@ -9,12 +9,13 @@
 #import "HYWebViewController.h"
 #import "NSString+HybridKit.h"
 #import "HYDefaultCommandHandlerPack.h"
-
 #import <SVProgressHUD/SVProgressHUD.h>
-#import <JavaScriptCore/JavaScriptCore.h>
 
 #define IS_IOS7 !([[[UIDevice currentDevice] systemVersion] floatValue] < 7.0f)
-#define HY_LOG(str, ...) if (self.loggingEnabled) NSLog(@"<%@ | %p> %@", NSStringFromClass(self.class), self, [NSString stringWithFormat:str, ##__VA_ARGS__])
+#define HY_LOG(str, ...)                                      \
+if (self.loggingEnabled)                                    \
+NSLog(@"<%@ | %p> %@", NSStringFromClass(self.class), self, \
+[NSString stringWithFormat:str, ##__VA_ARGS__])
 
 @interface HYWebViewController ()
 @end
@@ -30,30 +31,27 @@
 
 - (instancetype)initWithParams:(NSDictionary *)params {
     self = [super init];
-
+    
     if (self) {
         _params = params;
     }
-
+    
     return self;
 }
 
-- (void)viewDidLoad
-{
+- (void)viewDidLoad {
     [super viewDidLoad];
-
-    self.view.backgroundColor = [UIColor whiteColor];
+    
+    self.view.backgroundColor =
+    [UIColor colorWithRed:1.000 green:0.835 blue:0.408 alpha:1.000];
     self.webView.delegate = self;
     
     [self stateMachine];
     [self registerDefaultCommandHandlers];
-
-    if (_params[@"url"]) self.url = [NSURL URLWithString:[_params[@"url"] hy_slashUnescaped]];
+    
+    if (_params[@"url"])
+        self.url = [NSURL URLWithString:[_params[@"url"] hy_slashUnescaped]];
     if (_params[@"html"]) self.htmlString = [_params[@"html"] hy_slashUnescaped];
-    
-    
-    
-    
 }
 
 #pragma mark - Command handler interface
@@ -75,20 +73,25 @@
 
 - (NSMutableDictionary *)commandURLToJSON:(NSURL *)url {
     /*
-        Slices & parses the command URL.
-    */
+     Slices & parses the command URL.
+     */
     
-    NSArray *commandURLComponents = [url.absoluteString componentsSeparatedByString:@"command:"];
+    NSArray *commandURLComponents =
+    [url.absoluteString componentsSeparatedByString:@"command:"];
     NSString *encodedJSON = commandURLComponents.lastObject;
     NSString *unencodedJSON = [encodedJSON hy_realUnescaped];
-
+    
     NSError *error = nil;
-    NSDictionary *dict = [NSJSONSerialization JSONObjectWithData:[unencodedJSON dataUsingEncoding:NSUTF8StringEncoding] options:0 error:&error];
-
+    NSDictionary *dict = [NSJSONSerialization
+                          JSONObjectWithData:[unencodedJSON dataUsingEncoding:NSUTF8StringEncoding]
+                          options:0
+                          error:&error];
+    
     if (error) {
-        [NSException raise:error.localizedDescription format:@"%@", error.localizedFailureReason];
+        [NSException raise:error.localizedDescription
+                    format:@"%@", error.localizedFailureReason];
     }
-
+    
     return dict.mutableCopy;
 }
 
@@ -98,14 +101,22 @@
     NSString *commandString = json[@"command"];
     if (!commandString) return NO;
     
-    BOOL executed = NO;
-
-    if ([self.delegate respondsToSelector:@selector(hybridWebViewController:onWebCommand:)]) {
-        executed = [self.delegate hybridWebViewController:self onWebCommand:json];
+    __block BOOL executed = NO;
+    __block NSDictionary *ret;
+    
+    if ([self.delegate respondsToSelector:@selector(hybridWebViewController:
+                                                    onWebCommand:
+                                                    complete:)]) {
+        [self.delegate hybridWebViewController:self
+                                  onWebCommand:json
+                                      complete:^(BOOL y, NSDictionary *r) {
+                                          executed = y;
+                                          ret = r;
+                                      }];
     }
     
     if (!executed) {
-        for (id <HYWebViewCommand> commandHandler in self.commandHandlers) {
+        for (id<HYWebViewCommand> commandHandler in self.commandHandlers) {
             if ([commandHandler respondsToCommandString:commandString]) {
                 [commandHandler handleCommandString:commandString dictionary:json];
                 executed = YES;
@@ -113,12 +124,31 @@
             }
         }
     }
-
-    if (json[@"callback_javascript"]) {
-        [self.webView stringByEvaluatingJavaScriptFromString:json[@"callback_javascript"]];
+    
+    if (json[@"success"]) {
+        [self callJSFunction:json[@"success"]
+                    withArgs:[NSMutableDictionary dictionaryWithDictionary:ret]];
     }
-
+    
     return executed;
+}
+
+- (void)callJSFunction:(NSString *)name withArgs:(NSMutableDictionary *)args {
+    NSError *jsonError;
+    NSData *jsonData =
+    [NSJSONSerialization dataWithJSONObject:args options:0 error:&jsonError];
+    if (jsonError != nil) {
+        // call error callback function here
+        NSLog(@"Error creating JSON from the response  : %@",
+              [jsonError localizedDescription]);
+        return;
+    }
+    NSString *jsonStr =
+    [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
+    if (jsonStr == nil) {
+    }
+    [self.webView stringByEvaluatingJavaScriptFromString:
+     [NSString stringWithFormat:@"%@(%@);", name, jsonStr]];
 }
 
 #pragma mark - Property getters
@@ -127,14 +157,14 @@
     if (!_commandHandlers) {
         _commandHandlers = @[].mutableCopy;
     }
-
+    
     return _commandHandlers;
 }
 
 - (void)setUrl:(NSURL *)url {
     if (_url != url) {
         _url = url;
-
+        
         NSMutableURLRequest *urlRequest = [NSMutableURLRequest requestWithURL:url];
         urlRequest.cachePolicy = NSURLRequestReloadIgnoringCacheData;
         [self.webView loadRequest:urlRequest];
@@ -145,64 +175,78 @@
     if (_htmlString != htmlString) {
         _htmlString = htmlString;
         
-        [self.webView loadHTMLString:_htmlString baseURL:[NSURL fileURLWithPath:[[NSBundle mainBundle] bundlePath]]];
+        [self.webView
+         loadHTMLString:_htmlString
+         baseURL:[NSURL
+                  fileURLWithPath:[[NSBundle mainBundle] bundlePath]]];
     }
 }
 
 - (TKStateMachine *)stateMachine {
     if (!_stateMachine) {
-
         _stateMachine = [TKStateMachine new];
-
+        
         TKState *setup = [TKState stateWithName:@"setup"];
         TKState *loading = [TKState stateWithName:@"loading"];
-
-        [loading setDidEnterStateBlock:^(TKState *state, TKStateMachine *stateMachine) {
-            if (!self.hasLoadedURL) {
-                self.webView.hidden = YES;
-                self.webView.scrollView.scrollEnabled = NO;
+        
+        [loading
+         setDidEnterStateBlock:^(TKState *state, TKStateMachine *stateMachine) {
+             if (!self.hasLoadedURL) {
+                 self.webView.hidden = YES;
+                 self.webView.scrollView.scrollEnabled = NO;
              }
-        }];
-
-        [loading setDidExitStateBlock:^(TKState *state, TKStateMachine *stateMachine) {
-            self.navigationItem.rightBarButtonItem = nil;
-        }];
-
-
+         }];
+        
+        [loading
+         setDidExitStateBlock:^(TKState *state, TKStateMachine *stateMachine) {
+             self.navigationItem.rightBarButtonItem = nil;
+         }];
+        
         TKState *error = [TKState stateWithName:@"error"];
-        [error setDidEnterStateBlock:^(TKState *state, TKStateMachine *stateMachine) {
+        [error setDidEnterStateBlock:^(TKState *state,
+                                       TKStateMachine *stateMachine) {
             self.webView.hidden = YES;
-
+            
             [SVProgressHUD showErrorWithStatus:@"Error :("];
-            if ([self.delegate respondsToSelector:@selector(hybridWebViewControllerDidFailLoad:)]) {
-                [self.delegate hybridWebViewControllerDidFailLoad:self];
-            }
+            if ([self.delegate
+                 respondsToSelector:@selector(
+                                              hybridWebViewControllerDidFailLoad:)]) {
+                     [self.delegate hybridWebViewControllerDidFailLoad:self];
+                 }
         }];
-
-        [error setDidExitStateBlock:^(TKState *state, TKStateMachine *stateMachine) {
-            self.navigationItem.rightBarButtonItem = nil;
-        }];
-
+        
+        [error
+         setDidExitStateBlock:^(TKState *state, TKStateMachine *stateMachine) {
+             self.navigationItem.rightBarButtonItem = nil;
+         }];
+        
         TKState *success = [TKState stateWithName:@"success"];
-        [success setDidEnterStateBlock:^(TKState *state, TKStateMachine *stateMachine) {
-
-            self.hasLoadedURL = YES;
-            self.webView.hidden = NO;
-            self.webView.scrollView.scrollEnabled = YES;
-        }];
-
-        [_stateMachine addStates:@[setup, loading, error, success]];
-
-        TKEvent *startLoad = [TKEvent eventWithName:@"start_load" transitioningFromStates:@[setup, success, error] toState:loading];
-        TKEvent *loadError = [TKEvent eventWithName:@"load_error" transitioningFromStates:@[loading] toState:error];
-        TKEvent *finishLoad = [TKEvent eventWithName:@"finish_load" transitioningFromStates:@[loading] toState:success];
-
-        [_stateMachine addEvents:@[startLoad, loadError, finishLoad]];
+        [success
+         setDidEnterStateBlock:^(TKState *state, TKStateMachine *stateMachine) {
+             
+             self.hasLoadedURL = YES;
+             self.webView.hidden = NO;
+             self.webView.scrollView.scrollEnabled = YES;
+         }];
+        
+        [_stateMachine addStates:@[ setup, loading, error, success ]];
+        
+        TKEvent *startLoad = [TKEvent eventWithName:@"start_load"
+                            transitioningFromStates:@[ setup, success, error ]
+                                            toState:loading];
+        TKEvent *loadError = [TKEvent eventWithName:@"load_error"
+                            transitioningFromStates:@[ loading ]
+                                            toState:error];
+        TKEvent *finishLoad = [TKEvent eventWithName:@"finish_load"
+                             transitioningFromStates:@[ loading ]
+                                             toState:success];
+        
+        [_stateMachine addEvents:@[ startLoad, loadError, finishLoad ]];
         [_stateMachine isInState:@"setup"];
-
+        
         [_stateMachine activate];
     }
-
+    
     return _stateMachine;
 }
 
@@ -210,49 +254,66 @@
     if (!_webView) {
         _webView = [[UIWebView alloc] initWithFrame:self.view.bounds];
         _webView.translatesAutoresizingMaskIntoConstraints = NO;
-
+        
         [self.view addSubview:_webView];
         
         /*
-            Auto layout in code is a lot of work.
-        */
+         Auto layout in code is a lot of work.
+         */
         
-        for (NSNumber *attribute in @[@(NSLayoutAttributeCenterX), @(NSLayoutAttributeCenterY), @(NSLayoutAttributeTop), @(NSLayoutAttributeLeft), @(NSLayoutAttributeRight), @(NSLayoutAttributeBottom), @(NSLayoutAttributeWidth), @(NSLayoutAttributeHeight)]) {
-            NSLayoutConstraint *constraint = [NSLayoutConstraint constraintWithItem:_webView attribute:attribute.integerValue relatedBy:NSLayoutRelationEqual toItem:self.view attribute:attribute.integerValue multiplier:1 constant:0];
+        for (NSNumber *attribute in @[
+                                      @(NSLayoutAttributeCenterX),
+                                      @(NSLayoutAttributeCenterY),
+                                      @(NSLayoutAttributeTop),
+                                      @(NSLayoutAttributeLeft),
+                                      @(NSLayoutAttributeRight),
+                                      @(NSLayoutAttributeBottom),
+                                      @(NSLayoutAttributeWidth),
+                                      @(NSLayoutAttributeHeight)
+                                      ]) {
+            NSLayoutConstraint *constraint =
+            [NSLayoutConstraint constraintWithItem:_webView
+                                         attribute:attribute.integerValue
+                                         relatedBy:NSLayoutRelationEqual
+                                            toItem:self.view
+                                         attribute:attribute.integerValue
+                                        multiplier:1
+                                          constant:0];
             [self.view addConstraint:constraint];
         }
-
+        
         _webView.scrollView.decelerationRate = UIScrollViewDecelerationRateNormal;
-
+        
         _webView.scrollView.backgroundColor = [UIColor whiteColor];
         _webView.suppressesIncrementalRendering = NO;
         _webView.delegate = self;
-
+        
         for (UIView *subview in self.webView.scrollView.subviews) {
             if ([subview isKindOfClass:[UIImageView class]]) {
                 subview.hidden = YES;
             }
         }
     }
-
+    
     return _webView;
 }
 
 #pragma mark - UIWebViewDelegate
 
-- (BOOL)webView:(UIWebView *)webView shouldStartLoadWithRequest:(NSURLRequest *)request navigationType:(UIWebViewNavigationType)navigationType {
+- (BOOL)webView:(UIWebView *)webView
+shouldStartLoadWithRequest:(NSURLRequest *)request
+ navigationType:(UIWebViewNavigationType)navigationType {
     NSString *scheme = request.URL.scheme;
-
+    
     if ([scheme isEqualToString:@"domready"]) {
         [self.stateMachine fireEvent:@"finish_load" error:nil];
         return NO;
-    }
-    else if ([scheme isEqualToString:@"command"]) {
+    } else if ([scheme isEqualToString:@"command"]) {
         NSDictionary *commandDictionary = [self commandURLToJSON:request.URL].copy;
         [self runJSONCommand:commandDictionary];
         return NO;
     }
-
+    
     return YES;
 }
 
@@ -261,7 +322,9 @@
 }
 
 - (void)webViewDidFinishLoad:(UIWebView *)webView {
-    if ([self.url.absoluteString rangeOfString:@"dom_event"].location == NSNotFound || !self.url.absoluteString) {
+    if ([self.url.absoluteString rangeOfString:@"dom_event"].location ==
+        NSNotFound ||
+        !self.url.absoluteString) {
         [self.stateMachine fireEvent:@"finish_load" error:nil];
     }
 }

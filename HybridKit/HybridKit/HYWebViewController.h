@@ -19,7 +19,7 @@
 @protocol HYWebViewControllerDelegate <NSObject, UIWebViewDelegate>
 
 @optional
-- (BOOL)hybridWebViewController:(HYWebViewController *)webViewController onWebCommand:(NSDictionary *)jsonDictionary;
+- (void)hybridWebViewController:(HYWebViewController *)webViewController onWebCommand:(NSDictionary *)jsonDictionary complete:(void(^)(BOOL excuted, id ret))complete;
 - (void)hybridWebViewControllerDidFailLoad:(HYWebViewController *)webViewController;
 
 @end
