@@ -56,7 +56,7 @@
     }
 
     else if ([commandString isEqualToString:@"trigger_event"]) {
-        [self.webViewController.stateMachine fireEvent:commandDictionary[@"event"] userInfo:nil error:nil];
+        [self.webViewController.stateMachine fireEvent:commandDictionary[@"event"] error:nil];
     }
 
     else if ([commandString isEqualToString:@"javascript"]) {

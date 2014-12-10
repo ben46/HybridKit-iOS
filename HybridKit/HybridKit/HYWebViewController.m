@@ -9,13 +9,13 @@
 #import "HYWebViewController.h"
 #import "NSString+HybridKit.h"
 #import "HYDefaultCommandHandlerPack.h"
-
 #import <SVProgressHUD/SVProgressHUD.h>
 
 #define IS_IOS7 !([[[UIDevice currentDevice] systemVersion] floatValue] < 7.0f)
 #define HY_LOG(str, ...) if (self.loggingEnabled) NSLog(@"<%@ | %p> %@", NSStringFromClass(self.class), self, [NSString stringWithFormat:str, ##__VA_ARGS__])
 
 @interface HYWebViewController ()
+@property (nonatomic, strong) UIActivityIndicatorView *activityIndicator;
 @end
 
 @interface HYWebViewController (Commands)
@@ -93,20 +93,24 @@
     NSString *commandString = json[@"command"];
     if (!commandString) return NO;
     
-    BOOL executed = NO;
+    __block BOOL executed = NO;
 
-    if ([self.delegate respondsToSelector:@selector(hybridWebViewController:onWebCommand:)]) {
-        executed = [self.delegate hybridWebViewController:self onWebCommand:json];
-    }
-    
-    if (!executed) {
-        for (id <HYWebViewCommand> commandHandler in self.commandHandlers) {
-            if ([commandHandler respondsToCommandString:commandString]) {
-                [commandHandler handleCommandString:commandString dictionary:json];
-                executed = YES;
-                break;
+    if ([self.delegate respondsToSelector:@selector(hybridWebViewController:onWebCommand:complete:)]) {
+        [self.delegate hybridWebViewController:self onWebCommand:json complete:^(BOOL yes, id ret){
+            executed = yes;
+        }];
+    } else {
+        
+        if (!executed) {
+            for (id <HYWebViewCommand> commandHandler in self.commandHandlers) {
+                if ([commandHandler respondsToCommandString:commandString]) {
+                    [commandHandler handleCommandString:commandString dictionary:json];
+                    executed = YES;
+                    break;
+                }
             }
         }
+
     }
 
     if (json[@"callback_javascript"]) {
@@ -172,7 +176,7 @@
         TKState *setup = [TKState stateWithName:@"setup"];
         TKState *loading = [TKState stateWithName:@"loading"];
 
-        [loading setDidEnterStateBlock:^(TKState *state, TKTransition *transition) {
+        [loading setDidEnterStateBlock:^(TKState *state, TKStateMachine *stateMachine) {
             if (!self.hasLoadedURL) {
                 self.webView.hidden = YES;
                 self.webView.scrollView.scrollEnabled = NO;
@@ -180,14 +184,14 @@
             }
         }];
 
-        [loading setDidExitStateBlock:^(TKState *state, TKTransition *transition) {
+        [loading setDidExitStateBlock:^(TKState *state, TKStateMachine *stateMachine) {
             self.navigationItem.rightBarButtonItem = nil;
             self.activityIndicator.hidden = YES;
         }];
 
 
         TKState *error = [TKState stateWithName:@"error"];
-        [error setDidEnterStateBlock:^(TKState *state, TKTransition *transition) {
+        [error setDidEnterStateBlock:^(TKState *state, TKStateMachine *stateMachine) {
             self.webView.hidden = YES;
 
             [SVProgressHUD showErrorWithStatus:@"Error :("];
@@ -196,12 +200,12 @@
             }
         }];
 
-        [error setDidExitStateBlock:^(TKState *state, TKTransition *transition) {
+        [error setDidExitStateBlock:^(TKState *state, TKStateMachine *stateMachine) {
             self.navigationItem.rightBarButtonItem = nil;
         }];
 
         TKState *success = [TKState stateWithName:@"success"];
-        [success setDidEnterStateBlock:^(TKState *state, TKTransition *transition) {
+        [success setDidEnterStateBlock:^(TKState *state, TKStateMachine *stateMachine) {
 
             self.hasLoadedURL = YES;
             self.webView.hidden = NO;
@@ -261,7 +265,7 @@
     NSString *scheme = request.URL.scheme;
 
     if ([scheme isEqualToString:@"domready"]) {
-        [self.stateMachine fireEvent:@"finish_load" userInfo:nil error:nil];
+        [self.stateMachine fireEvent:@"finish_load" error:nil];
         return NO;
     }
     else if ([scheme isEqualToString:@"command"]) {
@@ -274,18 +278,18 @@
 }
 
 - (void)webViewDidStartLoad:(UIWebView *)webView {
-    [self.stateMachine fireEvent:@"start_load" userInfo:nil error:nil];
+    [self.stateMachine fireEvent:@"start_load" error:nil];
 }
 
 - (void)webViewDidFinishLoad:(UIWebView *)webView {
     if ([self.url.absoluteString rangeOfString:@"dom_event"].location == NSNotFound || !self.url.absoluteString) {
-        [self.stateMachine fireEvent:@"finish_load" userInfo:nil error:nil];
+        [self.stateMachine fireEvent:@"finish_load" error:nil];
     }
 }
 
 - (void)webView:(UIWebView *)webView didFailLoadWithError:(NSError *)error {
     if (error.code == NSURLErrorCancelled) return;
-    [self.stateMachine fireEvent:@"load_error" userInfo:nil error:nil];
+    [self.stateMachine fireEvent:@"load_error" error:nil];
 }
 
 @end

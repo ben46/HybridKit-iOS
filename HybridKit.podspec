@@ -11,8 +11,7 @@ Pod::Spec.new do |s|
   s.requires_arc = true
   s.license = {:type => 'MIT', :file => 'LICENSE'}
 
-  s.dependency 'SVProgressHUD', '~> 1.0'
-  s.dependency 'HexColors', '~> 2.0'
-  s.dependency 'TransitionKit', '~> 2.1'
-  s.dependency 'BlocksKit', '~> 2.2'
+  s.dependency 'SVProgressHUD'
+  s.dependency 'HexColors'
+  s.dependency 'TransitionKit'
 end
