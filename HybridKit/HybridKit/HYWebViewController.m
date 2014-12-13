@@ -185,7 +185,7 @@
         }];
 
         [loading setDidExitStateBlock:^(TKState *state, TKStateMachine *stateMachine) {
-            self.navigationItem.rightBarButtonItem = nil;
+//            self.navigationItem.rightBarButtonItem = nil;
             self.activityIndicator.hidden = YES;
         }];
 
@@ -201,7 +201,7 @@
         }];
 
         [error setDidExitStateBlock:^(TKState *state, TKStateMachine *stateMachine) {
-            self.navigationItem.rightBarButtonItem = nil;
+//            self.navigationItem.rightBarButtonItem = nil;
         }];
 
         TKState *success = [TKState stateWithName:@"success"];
