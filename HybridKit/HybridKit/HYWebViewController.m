@@ -96,8 +96,11 @@
     __block BOOL executed = NO;
 
     if ([self.delegate respondsToSelector:@selector(hybridWebViewController:onWebCommand:complete:)]) {
-        [self.delegate hybridWebViewController:self onWebCommand:json complete:^(BOOL yes, id ret){
+        [self.delegate hybridWebViewController:self onWebCommand:json complete:^(BOOL yes, NSString *ret){
             executed = yes;
+            [self callbackWithJSON:json ret:ret];
+
+            
         }];
     } else {
         
@@ -106,6 +109,7 @@
                 if ([commandHandler respondsToCommandString:commandString]) {
                     [commandHandler handleCommandString:commandString dictionary:json];
                     executed = YES;
+                    [self callbackWithJSON:json ret:nil];
                     break;
                 }
             }
@@ -113,11 +117,20 @@
 
     }
 
-    if (json[@"callback_javascript"]) {
-        [self.webView stringByEvaluatingJavaScriptFromString:json[@"callback_javascript"]];
-    }
 
     return executed;
+}
+
+- (void)callbackWithJSON:(NSDictionary *)json ret:(NSString *)ret
+{
+    if (json[@"success"]) {
+        NSString *str;
+        if(ret)
+            str = [NSString stringWithFormat:@"%@(\'%@\')", json[@"success"], ret];
+        else
+            str = [NSString stringWithFormat:@"%@()", json[@"success"]];
+        [self.webView stringByEvaluatingJavaScriptFromString:str];
+    }
 }
 
 #pragma mark - Property getters
